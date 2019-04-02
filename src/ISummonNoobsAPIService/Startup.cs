@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
@@ -15,9 +14,9 @@ using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Swashbuckle.AspNetCore.Swagger;
 using System.Reflection;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.OpenApi.Models;
 
 namespace ISummonNoobs
 {
@@ -29,6 +28,8 @@ namespace ISummonNoobs
         private readonly TelemetrySettings _telemetrySettings = new TelemetrySettings();
         private readonly IBigBrother _bb;
         private readonly IConfigurationRoot _configuration;
+
+        private bool UseOpenApiV2 => _configuration["ISummonNoobs:OpenApi"] == "V2";
 
         /// <summary>
         /// Constructor
@@ -60,7 +61,8 @@ namespace ISummonNoobs
                 {
                     var policy = ScopePolicy.Create(serviceConfigurationOptions.Value.RequiredScopes.ToArray());
 
-                    var filter = EnvironmentHelper.IsInFabric ? 
+                    //TODO: unblock this
+                    var filter = /*EnvironmentHelper.IsInFabric*/ false ? 
                         (IFilterMetadata) new AuthorizeFilter(policy): 
                         new AllowAnonymousFilter();
 
@@ -82,20 +84,27 @@ namespace ISummonNoobs
                     {
                         c.IncludeXmlComments(path);
                         c.DescribeAllEnumsAsStrings();
-                        c.SwaggerDoc("v1", new Info { Version = Assembly.GetExecutingAssembly().GetName().Version.ToString(), Title = "ISummonNoobs" });
+                        c.SwaggerDoc("v1", new OpenApiInfo { Version = Assembly.GetExecutingAssembly().GetName().Version.ToString(), Title = "ISummonNoobs" });
                         c.CustomSchemaIds(x => x.FullName);
                         c.AddSecurityDefinition("Bearer",
-                            new ApiKeyScheme
+                            new OpenApiSecurityScheme
                             {
-                                In = "header",
+                                In = ParameterLocation.Header,
                                 Description = "Please insert JWT with Bearer into field",
-                                Name = "Authorization",
-                                Type = "apiKey"
+                                Type = UseOpenApiV2 ? SecuritySchemeType.ApiKey : SecuritySchemeType.Http,
+                                Scheme = "bearer",
+                                BearerFormat = "JWT",
                             });
 
-                        c.AddSecurityRequirement(new Dictionary<string, IEnumerable<string>>
+                        c.AddSecurityRequirement(new OpenApiSecurityRequirement
                         {
-                        { "Bearer", Array.Empty<string>() }
+                            {
+                                new OpenApiSecurityScheme
+                                {
+                                    Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" },
+                                },
+                                new string[0]
+                            }
                         });
                     });
                 }
@@ -144,6 +153,7 @@ namespace ISummonNoobs
 
             app.UseAuthentication();
 
+            
             app.UseMvc();
         }
     }

@@ -25,10 +25,10 @@ namespace ISummonNoobs
                     // When Service Fabric creates an instance of this service type,
                     // an instance of the class is created in this host process.
 
-                    ServiceRuntime.RegisterServiceAsync("ISummonNoobsType",
-                        context => new WebApiService(context)).GetAwaiter().GetResult();
+                    ServiceRuntime.RegisterServiceAsync("ISummonNoobsAPIServiceType",
+                        context => new ISummonNoobsAPIService(context)).GetAwaiter().GetResult();
 
-                    ServiceEventSource.Current.ServiceTypeRegistered(Process.GetCurrentProcess().Id, typeof(WebApiService).Name);
+                    ServiceEventSource.Current.ServiceTypeRegistered(Process.GetCurrentProcess().Id, typeof(ISummonNoobsAPIService).Name);
 
                     // Prevents this host process from terminating so services keeps running. 
                     Thread.Sleep(Timeout.Infinite);

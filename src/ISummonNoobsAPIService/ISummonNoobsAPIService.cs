@@ -15,9 +15,9 @@ namespace ISummonNoobs
     /// <summary>
     /// The FabricRuntime creates an instance of this class for each service type instance. 
     /// </summary>
-    internal sealed class WebApiService : StatelessService
+    internal sealed class ISummonNoobsAPIService : StatelessService
     {
-        public WebApiService(StatelessServiceContext context)
+        public ISummonNoobsAPIService(StatelessServiceContext context)
             : base(context)
         { }
 
