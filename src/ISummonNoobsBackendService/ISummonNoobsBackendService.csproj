@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -12,6 +12,8 @@
   <ItemGroup>
     <PackageReference Include="Eshopworld.Web" Version="2.1.6" />
     <PackageReference Include="Microsoft.ServiceFabric.Services" Version="3.3.644" />
+<PackageReference Include="Autofac" Version="4.9.2" />
+<PackageReference Include="Autofac.ServiceFabric" Version="2.2.0" />
   </ItemGroup>
 
   <ItemGroup>

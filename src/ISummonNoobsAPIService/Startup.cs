@@ -29,7 +29,7 @@ namespace ISummonNoobs
         private readonly IBigBrother _bb;
         private readonly IConfigurationRoot _configuration;
 
-        private bool UseOpenApiV2 => _configuration["ISummonNoobs:OpenApi"] == "V2";
+        private bool UseOpenApiV2 => true;
 
         /// <summary>
         /// Constructor

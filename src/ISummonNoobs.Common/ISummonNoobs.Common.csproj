@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Autofac" Version="4.9.2" />
+    <PackageReference Include="Eshopworld.Web" Version="2.1.6" />
+    <PackageReference Include="Microsoft.ServiceFabric.Services.Remoting" Version="3.3.644" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Microsoft.ServiceFabric.Actors">
+      <HintPath>..\..\..\..\Users\vhaken\.nuget\packages\microsoft.servicefabric.actors\3.3.644\lib\netstandard2.0\Microsoft.ServiceFabric.Actors.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

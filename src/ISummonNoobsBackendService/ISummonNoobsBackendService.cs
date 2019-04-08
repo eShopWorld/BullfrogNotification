@@ -3,44 +3,57 @@ using System.Collections.Generic;
 using System.Fabric;
 using System.Threading;
 using System.Threading.Tasks;
-using Eshopworld.Core;
 using Eshopworld.Web;
+using ISummonNoobs.Common;
 using ISummonNoobs.Interfaces;
+using Microsoft.ServiceFabric.Data;
 using Microsoft.ServiceFabric.Data.Collections;
 using Microsoft.ServiceFabric.Services.Communication.Runtime;
-using Microsoft.ServiceFabric.Services.Remoting.Runtime;
 using Microsoft.ServiceFabric.Services.Remoting.V2.FabricTransport.Runtime;
 using Microsoft.ServiceFabric.Services.Runtime;
 using Newtonsoft.Json.Linq;
-
 
 namespace ISummonNoobsBackendService
 {
     /// <summary>
     /// An instance of this class is created for each service replica by the Service Fabric runtime.
     /// </summary>
-    internal sealed class ISummonNoobsBackendService : StatefulService, IISummonNoobsBackendService
+    public class ISummonNoobsBackendService : StatefulService, IISummonNoobsBackendService
     {
-        public ISummonNoobsBackendService(StatefulServiceContext context)
+        private readonly ClusterNotifier _clusterNotifier;
+        internal const string QueueName = "NotificationInflightQueue";
+
+        private readonly object _inflightQueueInstanceLock = new object();
+        private IReliableConcurrentQueue<InflightMessage> _inflightQueue;
+
+        public ISummonNoobsBackendService(StatefulServiceContext context, ClusterNotifier clusterNotifier)
             : base(context)
-        { }
+        {
+            _clusterNotifier = clusterNotifier;
+        }
+
+        public ISummonNoobsBackendService(StatefulServiceContext context, IReliableStateManagerReplica stateManager, ClusterNotifier clusterNotifier)
+            : base(context, stateManager)
+        {
+            _clusterNotifier = clusterNotifier;
+        }
 
         /// <summary>
-        /// Optional override to create listeners (e.g., HTTP, Service Remoting, WCF, etc.) for this service replica to handle client or user requests.
+        /// register listeners
+        ///
+        /// we are using JSON serialization instead of standard remoting DataContract
         /// </summary>
-        /// <remarks>
-        /// For more information on service communication, see https://aka.ms/servicefabricservicecommunication
-        /// </remarks>
-        /// <returns>A collection of listeners.</returns>
+        /// <returns></returns>
         protected override IEnumerable<ServiceReplicaListener> CreateServiceReplicaListeners()
         {
-            return new List<ServiceReplicaListener>
+            return  new List<ServiceReplicaListener>
             {
-                new ServiceReplicaListener((c) => new FabricTransportServiceRemotingListener(this.Context, new ISummonNoobsBackendService(this.Context), null,
+                new ServiceReplicaListener((c) => new FabricTransportServiceRemotingListener(Context, this, null,
                     new ServiceRemotingJsonSerializationProvider()))
             };
         }
 
+        /// <inheritdoc />
         /// <summary>
         /// This is the main entry point for your service replica.
         /// This method executes when this replica of your service becomes primary and has write status.
@@ -48,35 +61,64 @@ namespace ISummonNoobsBackendService
         /// <param name="cancellationToken">Canceled when Service Fabric needs to shut down this service replica.</param>
         protected override async Task RunAsync(CancellationToken cancellationToken)
         {
-            // TODO: Replace the following sample code with your own logic 
-            //       or remove this RunAsync override if it's not needed in your service.
-
-            var myDictionary = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, long>>("myDictionary");
-
+            InitInflightQueue();
             while (true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                using (var tx = this.StateManager.CreateTransaction())
+                using (var tx = StateManager.CreateTransaction())
                 {
-                    var result = await myDictionary.TryGetValueAsync(tx, "Counter");
 
-                    ServiceEventSource.Current.ServiceMessage(this.Context, "Current Counter Value: {0}",
-                        result.HasValue ? result.Value.ToString() : "Value does not exist.");
+                    var message = await _inflightQueue.TryDequeueAsync(tx, cancellationToken);
+                    if (message.HasValue)
+                    {
+                        await _clusterNotifier.DistributeToCluster(message.Value);
 
-                    await myDictionary.AddOrUpdateAsync(tx, "Counter", 0, (key, value) => ++value);
-
-                    // If an exception is thrown before calling CommitAsync, the transaction aborts, all changes are 
-                    // discarded, and nothing is saved to the secondary replicas.
+                    }
                     await tx.CommitAsync();
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken); //TODO: make configurable
+            }
+            // ReSharper disable once FunctionNeverReturns
+        }
+
+        /// <summary>
+        /// enqueue incoming message
+        /// </summary>
+        /// <param name="type">type of message</param>
+        /// <param name="message">message payload</param>
+        /// <returns>async task</returns>
+        public async Task IngestMessage(string type, JObject message)
+        {
+            InitInflightQueue();
+            using (var tx = StateManager.CreateTransaction())
+            {
+                await _inflightQueue.EnqueueAsync(tx, new InflightMessage { Payload = message.ToString(), Type = type });
+
+                await tx.CommitAsync();
             }
         }
 
-        public async Task IngestMessage(string type, JObject message)
-        {            
+        /// <summary>
+        /// this service has two runtime aspects - <see cref="RunAsync"/> and <see cref="IISummonNoobsBackendService"/>        
+        /// as soon as listener is open, messaging can start flowing in and the same goes for <see cref="RunAsync"/> kicking in
+        ///
+        /// the listeners are not open to secondary replicas and the same goes for <see cref="RunAsync"/> not being invoked on those so ultimately the queue can be shared
+        /// within the partition/primary replica instance (and we will likely run one partition anyway)
+        /// </summary>
+        private void InitInflightQueue()
+        {
+            if (_inflightQueue != null) return;
+
+            lock (_inflightQueueInstanceLock)
+            {
+                if (_inflightQueue == null)
+                {
+                    _inflightQueue =
+                        StateManager.GetOrAddAsync<IReliableConcurrentQueue<InflightMessage>>(QueueName).GetAwaiter().GetResult();
+                }
+            }
         }
     }
 }

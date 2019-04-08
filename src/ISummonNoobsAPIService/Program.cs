@@ -1,37 +1,38 @@
 ﻿using System;
-using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
+using System.Threading.Tasks;
+using Autofac;
+using Autofac.Integration.ServiceFabric;
 using Eshopworld.Telemetry;
 using Eshopworld.Web;
-using Microsoft.AspNetCore.Hosting;
+using ISummonNoobs;
+using ISummonNoobs.Common;
 using Microsoft.AspNetCore;
-using Microsoft.ServiceFabric.Services.Runtime;
+using Microsoft.AspNetCore.Hosting;
 
-namespace ISummonNoobs
+namespace ISummonNoobsAPIService
 {
+    [ExcludeFromCodeCoverage]
     internal static class Program
     {
         /// <summary>
         /// This is the entry point of the service host process.
         /// </summary>
-        private static void Main()
+        private static async Task Main()
         {
             try
             {
                 if (EnvironmentHelper.IsInFabric)
                 {
-                    // The ServiceManifest.XML file defines one or more service type names.
-                    // Registering a service maps a service type name to a .NET type.
-                    // When Service Fabric creates an instance of this service type,
-                    // an instance of the class is created in this host process.
-
-                    ServiceRuntime.RegisterServiceAsync("ISummonNoobsAPIServiceType",
-                        context => new ISummonNoobsAPIService(context)).GetAwaiter().GetResult();
-
-                    ServiceEventSource.Current.ServiceTypeRegistered(Process.GetCurrentProcess().Id, typeof(ISummonNoobsAPIService).Name);
-
-                    // Prevents this host process from terminating so services keeps running. 
-                    Thread.Sleep(Timeout.Infinite);
+                    var builder = new ContainerBuilder();
+                    builder.RegisterModule<ServiceFabricModule>();
+                    builder.RegisterServiceFabricSupport();
+                    builder.RegisterStatelessService<ISummonNoobs.ISummonNoobsAPIService>("ISummonNoobsAPIServiceType");
+                    using (var container = builder.Build())
+                    {
+                        await Task.Delay(Timeout.Infinite);
+                    }
                 }
                 else
                 {

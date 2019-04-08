@@ -1,6 +1,4 @@
-﻿
-using System.Threading.Tasks;
-using Eshopworld.Core;
+﻿using System.Threading.Tasks;
 using Microsoft.ServiceFabric.Services.Remoting;
 using Newtonsoft.Json.Linq;
 
