@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Fabric;
 using System.Threading;
 using System.Threading.Tasks;
+using Eshopworld.Core;
+using Eshopworld.Telemetry;
 using Eshopworld.Web;
 using ISummonNoobs.Common;
 using ISummonNoobs.Interfaces;
@@ -21,15 +23,19 @@ namespace ISummonNoobsBackendService
     public class ISummonNoobsBackendService : StatefulService, IISummonNoobsBackendService
     {
         private readonly ClusterNotifier _clusterNotifier;
+        private readonly IBigBrother _bigBrother;
         internal const string QueueName = "NotificationInflightQueue";
 
         private readonly object _inflightQueueInstanceLock = new object();
         private IReliableConcurrentQueue<InflightMessage> _inflightQueue;
 
-        public ISummonNoobsBackendService(StatefulServiceContext context, ClusterNotifier clusterNotifier)
+        internal TimeSpan WaitTimeBetweenLoop { get; set; } = TimeSpan.FromSeconds(1);
+
+        public ISummonNoobsBackendService(StatefulServiceContext context, ClusterNotifier clusterNotifier, IBigBrother bigBrother)
             : base(context)
         {
             _clusterNotifier = clusterNotifier;
+            _bigBrother = bigBrother;
         }
 
         public ISummonNoobsBackendService(StatefulServiceContext context, IReliableStateManagerReplica stateManager, ClusterNotifier clusterNotifier)
@@ -66,19 +72,33 @@ namespace ISummonNoobsBackendService
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                using (var tx = StateManager.CreateTransaction())
+                try
                 {
-
-                    var message = await _inflightQueue.TryDequeueAsync(tx, cancellationToken);
-                    if (message.HasValue)
+                    using (var tx = StateManager.CreateTransaction())
                     {
-                        await _clusterNotifier.DistributeToCluster(message.Value);
 
+                        var message = await _inflightQueue.TryDequeueAsync(tx, cancellationToken);
+                        if (message.HasValue)
+                        {
+
+                            await _clusterNotifier.DistributeToCluster(message.Value, cancellationToken,
+                                Context.CodePackageActivationContext.ApplicationName);
+                        }
+
+                        await tx.CommitAsync();
                     }
-                    await tx.CommitAsync();
+                }
+                catch (OperationCanceledException) //cancellation requested
+                {
+                    throw;
+                }
+                catch (Exception e) //anything else
+                {
+                    BigBrother.Write(e);
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken); //TODO: make configurable
+                await Task.Delay(WaitTimeBetweenLoop, cancellationToken);
+
             }
             // ReSharper disable once FunctionNeverReturns
         }
@@ -94,7 +114,7 @@ namespace ISummonNoobsBackendService
             InitInflightQueue();
             using (var tx = StateManager.CreateTransaction())
             {
-                await _inflightQueue.EnqueueAsync(tx, new InflightMessage { Payload = message.ToString(), Type = type });
+                await _inflightQueue.EnqueueAsync(tx, new InflightMessage (message.ToString(), type ));
 
                 await tx.CommitAsync();
             }

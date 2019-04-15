@@ -17,6 +17,9 @@
         <Program>ISummonNoobsBackendService.exe</Program>
       </ExeHost>
     </EntryPoint>
+    <EnvironmentVariables>
+      <EnvironmentVariable Name="KEYVAULT_URL" Value="https://esw-tooling-ci-we.vault.azure.net/"/>
+    </EnvironmentVariables>
   </CodePackage>
 
   <!-- Config package is the contents of the Config directoy under PackageRoot that contains an 

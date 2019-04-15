@@ -6,6 +6,7 @@
     <Parameter Name="ISummonNoobsBackendService_TargetReplicaSetSize" DefaultValue="3" />
     <Parameter Name="ISummonNoobsAPIService_InstanceCount" DefaultValue="-1" />
     <Parameter Name="ASPNETCORE_ENVIRONMENT" DefaultValue="PROD" />
+    <Parameter Name="KEYVAULT_URL" DefaultValue="https://esw-tooling-ci-we.vault.azure.net/" />
   </Parameters>
   <!-- Import the ServiceManifest from the ServicePackage. The ServiceManifestName and ServiceManifestVersion 
        should match the Name and Version attributes of the ServiceManifest element defined in the 
@@ -19,6 +20,7 @@
     <ConfigOverrides />
     <EnvironmentOverrides CodePackageRef="Code">
       <EnvironmentVariable Name="ASPNETCORE_ENVIRONMENT" Value="[ASPNETCORE_ENVIRONMENT]" />
+      <EnvironmentVariable Name="KEYVAULT_URL" Value="[KEYVAULT_URL]" />
     </EnvironmentOverrides>
   </ServiceManifestImport>
   <DefaultServices>

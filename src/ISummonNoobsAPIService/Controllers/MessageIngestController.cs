@@ -1,10 +1,9 @@
 ﻿using System;
-using System.Fabric;
 using System.Net;
-using System.Threading;
 using System.Threading.Tasks;
 using Eshopworld.Core;
 using Eshopworld.Web;
+using ISummonNoobs.Common;
 using ISummonNoobs.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,6 +24,17 @@ namespace ISummonNoobsAPIService.Controllers
     [Authorize]
     public class MessageIngestController : Controller
     {
+        private readonly IBigBrother _bigBrother;
+
+        /// <summary>
+        /// DI constructor
+        /// </summary>
+        /// <param name="bigBrother">big brother instance</param>
+        public MessageIngestController(IBigBrother bigBrother)
+        {
+            _bigBrother = bigBrother;
+        }
+
         /// <summary>
         /// post
         /// </summary>
@@ -51,6 +61,8 @@ namespace ISummonNoobsAPIService.Controllers
                     new Uri("fabric:/ISummonNoobs/ISummonNoobsBackendService"), new ServicePartitionKey(1)); //TODO: review keying strategy
 
             await service.IngestMessage(type, payload);
+
+            _bigBrother.Publish(new MessagedIngested { MessageType = type, Payload = payload.ToString()});
 
             return Ok();
         }
