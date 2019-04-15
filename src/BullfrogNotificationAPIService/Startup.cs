@@ -58,13 +58,13 @@ namespace BullfrogNotificationApiService
                     .GetService<IOptions<ServiceConfigurationOptions>>();
 
                 services.AddMvc(options =>
-                {                    
-                    var filter =
+                {
+
 #if (DEBUG)
-                        new AllowAnonymousFilter();
+                    var filter = new AllowAnonymousFilter();
 #else
                     var policy = ScopePolicy.Create(serviceConfigurationOptions.Value.RequiredScopes.ToArray());
-                    (IFilterMetadata) new AuthorizeFilter(policy): 
+                    var filter =(IFilterMetadata) new AuthorizeFilter(policy): 
 #endif
 
                     options.Filters.Add(filter);
