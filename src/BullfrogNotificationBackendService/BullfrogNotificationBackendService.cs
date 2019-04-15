@@ -37,10 +37,11 @@ namespace BullfrogNotificationBackendService
             _bigBrother = bigBrother;
         }
 
-        public BullfrogNotificationBackendService(StatefulServiceContext context, IReliableStateManagerReplica stateManager, ClusterNotifier clusterNotifier)
+        public BullfrogNotificationBackendService(StatefulServiceContext context, IReliableStateManagerReplica stateManager, ClusterNotifier clusterNotifier, IBigBrother bigBrother)
             : base(context, stateManager)
         {
             _clusterNotifier = clusterNotifier;
+            _bigBrother = bigBrother;
         }
 
         /// <summary>

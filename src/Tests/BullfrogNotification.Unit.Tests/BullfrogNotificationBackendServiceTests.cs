@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BullfrogNotification.Common;
 using BullfrogNotificationBackendService;
+using Eshopworld.Core;
 using Eshopworld.Tests.Core;
 using FluentAssertions;
 using Microsoft.ServiceFabric.Data;
@@ -19,10 +20,6 @@ using Xunit;
 // ReSharper disable once InconsistentNaming
 public class BullfrogNotificationBackendServiceTests
 {
-    public BullfrogNotificationBackendService.BullfrogNotificationBackendService CreateBackendService(StatefulServiceContext sc,
-        IReliableStateManagerReplica2 stateManagerReplica2) =>
-        new BullfrogNotificationBackendService.BullfrogNotificationBackendService(sc, stateManagerReplica2, null);
-
     private static JObject JsonMessage => JObject.Parse("{\"prop\":\"blah\"}");
 
     [Fact, IsLayer0]
@@ -30,7 +27,7 @@ public class BullfrogNotificationBackendServiceTests
     {
         var context = MockStatefulServiceContextFactory.Default;
         var stateManager = new MockReliableStateManager();
-        var service = new BullfrogNotificationBackendService.BullfrogNotificationBackendService(context, stateManager, Mock.Of<ClusterNotifier>())
+        var service = new BullfrogNotificationBackendService.BullfrogNotificationBackendService(context, stateManager, Mock.Of<ClusterNotifier>(), Mock.Of<IBigBrother>())
         {
             WaitTimeBetweenLoop = TimeSpan.FromMilliseconds(10)
         };
@@ -51,7 +48,7 @@ public class BullfrogNotificationBackendServiceTests
         var context = MockStatefulServiceContextFactory.Default;
         var stateManager = new MockReliableStateManager();
         var service =
-            new BullfrogNotificationBackendService.BullfrogNotificationBackendService(context, stateManager, clusterNotifierMock.Object)
+            new BullfrogNotificationBackendService.BullfrogNotificationBackendService(context, stateManager, clusterNotifierMock.Object, Mock.Of<IBigBrother>())
             {
                 WaitTimeBetweenLoop = TimeSpan.FromMilliseconds(10)
             };
@@ -76,7 +73,7 @@ public class BullfrogNotificationBackendServiceTests
         var context = MockStatefulServiceContextFactory.Default;
         var stateManager = new MockReliableStateManager();
         var service =
-            new BullfrogNotificationBackendService.BullfrogNotificationBackendService(context, stateManager, clusterNotifierMock.Object)
+            new BullfrogNotificationBackendService.BullfrogNotificationBackendService(context, stateManager, clusterNotifierMock.Object, Mock.Of<IBigBrother>())
             {
                 WaitTimeBetweenLoop = TimeSpan.FromMilliseconds(10)
             };
@@ -87,7 +84,7 @@ public class BullfrogNotificationBackendServiceTests
         var T = service.InvokeRunAsync(ctxSource.Token);
         T.Wait(TimeSpan.FromMilliseconds(30));
         ctxSource.Cancel();
-        Thread.Sleep(TimeSpan.FromSeconds(2)); //TODO: maybe rewrite
+        Thread.Sleep(TimeSpan.FromSeconds(30));
         T.IsCanceled.Should().BeTrue();
     }
 
@@ -100,7 +97,7 @@ public class BullfrogNotificationBackendServiceTests
         var context = MockStatefulServiceContextFactory.Default;
         var stateManager = new MockReliableStateManager();
         var service =
-            new BullfrogNotificationBackendService.BullfrogNotificationBackendService(context, stateManager, clusterNotifierMock.Object)
+            new BullfrogNotificationBackendService.BullfrogNotificationBackendService(context, stateManager, clusterNotifierMock.Object, Mock.Of<IBigBrother>())
             {
                 WaitTimeBetweenLoop = TimeSpan.FromMilliseconds(10)
             };
@@ -124,7 +121,7 @@ public class BullfrogNotificationBackendServiceTests
         var context = MockStatefulServiceContextFactory.Default;
         var stateManager = new MockReliableStateManager();
         var service =
-            new BullfrogNotificationBackendService.BullfrogNotificationBackendService(context, stateManager, clusterNotifierMock.Object)
+            new BullfrogNotificationBackendService.BullfrogNotificationBackendService(context, stateManager, clusterNotifierMock.Object, Mock.Of<IBigBrother>())
             {
                 WaitTimeBetweenLoop = TimeSpan.FromMilliseconds(10)
             };
@@ -148,7 +145,7 @@ public class BullfrogNotificationBackendServiceTests
 
         var replicaSet = new MockStatefulServiceReplicaSet<BullfrogNotificationBackendService.BullfrogNotificationBackendService>(
             (sc, stateManagerReplica2) => new BullfrogNotificationBackendService.BullfrogNotificationBackendService(sc, stateManagerReplica2,
-                clusterNotifierMock.Object)
+                clusterNotifierMock.Object, Mock.Of<IBigBrother>())
             {
                 WaitTimeBetweenLoop = TimeSpan.FromMilliseconds(10)
             }, CreateStateManagerReplica);

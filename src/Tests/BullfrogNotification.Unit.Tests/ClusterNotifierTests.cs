@@ -97,7 +97,7 @@ public async Task BasicFlow_EndpointsDiscoveredAndPinged()
     {
         for (var x = 0; x < 3; x++)
         {
-            endpoints.Add(handler.When($"http://App{x}:1234/api/v1/messageingest/type%2bclass%2cassembly")
+            endpoints.Add(handler.When($"http://App{x}:1234/notification/type%2bclass%2cassembly")
                 .Respond((req) =>
                     Task.FromResult(
                         new HttpResponseMessage(HttpStatusCode
