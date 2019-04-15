@@ -4,6 +4,7 @@ using System.Fabric.Health;
 using System.Fabric.Query;
 using System.Globalization;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
@@ -132,7 +133,7 @@ namespace ISummonNoobsBackendService
                     new StringContent(message.Payload, Encoding.UTF8, "application/json"),
                     cancelToken);
 
-                if (!resp.IsSuccessStatusCode)
+                if (!resp.IsSuccessStatusCode && resp.StatusCode!=HttpStatusCode.NotFound)
                 {
                     failureDetected = true;
                     failureReason = $"Status Code returned - {resp.StatusCode}";
