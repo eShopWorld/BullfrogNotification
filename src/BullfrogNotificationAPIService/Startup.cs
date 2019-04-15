@@ -64,7 +64,7 @@ namespace BullfrogNotificationApiService
                     var filter = new AllowAnonymousFilter();
 #else
                     var policy = ScopePolicy.Create(serviceConfigurationOptions.Value.RequiredScopes.ToArray());
-                    var filter =(IFilterMetadata) new AuthorizeFilter(policy): 
+                    var filter = (IFilterMetadata)new AuthorizeFilter(policy); 
 #endif
 
                     options.Filters.Add(filter);
