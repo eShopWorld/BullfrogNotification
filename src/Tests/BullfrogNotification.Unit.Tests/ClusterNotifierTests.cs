@@ -110,14 +110,7 @@ public async Task BasicFlow_EndpointsDiscoveredAndPinged()
 
     var token= new CancellationToken();
 
-    try
-    {
-        await notifier.DistributeToCluster(new InflightMessage("blah", "type+class,assembly"), token, "notifierApp");
-    }
-    catch (Exception e)
-    {
-        
-    }
+    await notifier.DistributeToCluster(new InflightMessage("blah", "type+class,assembly"), token, "notifierApp");
     
     foreach (var endpoint in endpoints)
     {

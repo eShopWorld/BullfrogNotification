@@ -42,6 +42,9 @@
   <ItemGroup>
     <ProjectReference Include="..\BullfrogNotificationAPIService\BullfrogNotificationApiService.csproj" />
     <ProjectReference Include="..\BullfrogNotificationBackendService\BullfrogNotificationBackendService.csproj" />
+    <ProjectReference Include="..\TestNotificationReceiver\TestNotificationReceiver.csproj">
+      <ServiceLaunchUrl>http://{MachineName}:{ServicePort}/api/values</ServiceLaunchUrl>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
   <PropertyGroup>

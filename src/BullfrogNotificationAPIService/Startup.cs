@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Configuration;
@@ -38,8 +39,13 @@ namespace BullfrogNotificationApiService
         public Startup(IHostingEnvironment env)
         {
             _configuration = EswDevOpsSdk.BuildConfiguration(env.ContentRootPath, env.EnvironmentName);
-            _configuration.GetSection("Telemetry").Bind(_telemetrySettings);
-            _bb = new BigBrother(_telemetrySettings.InstrumentationKey, _telemetrySettings.InternalKey);
+            var internalKey = _configuration["BBInstrumentationKey"];
+            if (string.IsNullOrEmpty(internalKey))
+            {
+                throw new ApplicationException($"BBIntrumentationKey not found for environment {env.EnvironmentName}");
+            }
+
+            _bb = new BigBrother(internalKey, internalKey);
         }
 
         /// <summary>
@@ -57,19 +63,7 @@ namespace BullfrogNotificationApiService
                 var serviceConfigurationOptions = services.BuildServiceProvider()
                     .GetService<IOptions<ServiceConfigurationOptions>>();
 
-                services.AddMvc(options =>
-                {
-
-#if (DEBUG)
-                    var filter = new AllowAnonymousFilter();
-#else
-                    var policy = ScopePolicy.Create(serviceConfigurationOptions.Value.RequiredScopes.ToArray());
-                    var filter = (IFilterMetadata)new AuthorizeFilter(policy); 
-#endif
-
-                    options.Filters.Add(filter);
-                });
-                services.AddApiVersioning();
+               
 
                 //Get XML documentation
                 var path = Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetExecutingAssembly().GetName().Name}.xml");
@@ -110,6 +104,12 @@ namespace BullfrogNotificationApiService
                     });
                 }
 
+                services.AddAuthorization(options =>
+                {
+                    options.AddPolicy("BullfrogNotificationScope", policy =>
+                        policy.RequireClaim("scope", "TBA")); //TODO: define claims                   
+                });
+
                 services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddIdentityServerAuthentication(
                     x =>
                     {
@@ -120,6 +120,22 @@ namespace BullfrogNotificationApiService
                         //TODO: this requires Eshopworld.Beatles.Security to be refactored
                         //x.AddJwtBearerEventsTelemetry(bb); 
                     });
+
+                services.AddMvc(options =>
+                    {
+
+#if (DEBUG)
+                        var filter = new AllowAnonymousFilter();
+#else
+                    var policy = ScopePolicy.Create(serviceConfigurationOptions.Value.RequiredScopes.ToArray());
+                    var filter = (IFilterMetadata)new AuthorizeFilter(policy); 
+#endif
+
+                        options.Filters.Add(filter);
+                    })
+                    .SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+
+                services.AddApiVersioning();
 
                 var builder = new ContainerBuilder();
                 builder.Populate(services);
